@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Viiveo - Application Prestataire</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: transparent;
+    }
+
+    #background-wrapper {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image: url('https://i.postimg.cc/7LX7CrC9/bkg-viive-cl.png');
+      background-size: cover;
+      background-position: center;
+      filter: brightness(0.85);
+      z-index: -1;
+    }
+
+    #container {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    /* Connexion */
+    #login {
+      background: rgba(255, 255, 255, 0.92);
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+      max-width: 500px;
+      width: 90%;
+      box-sizing: border-box;
+      text-align: center;
+    }
+
+    #login h2 {
+      font-size: 2.4em;
+      font-weight: 700;
+      color: #B58F0A;
+    }
+
+    #login button {
+      background-color: #B58F0A;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 10px;
+      width: 50%;
+      outline: none;
+    }
+
+    #login button:hover {
+      background-color: #9b7606;
+    }
+
+    input[type="email"], input[type="password"] {
+      width: 100%;
+      padding: 14px;
+      margin-bottom: 20px;
+      border: 1.8px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    /* Messages */
+    #message {
+      color: #d32f2f;
+      font-weight: 600;
+      min-height: 20px;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    /* Modale missions */
+    #missions-modal {
+      background: rgba(255, 255, 255, 0.92);
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+      width: 90%;
+      max-width: 930px;
+      margin: 20px auto;
+      box-sizing: border-box;
+    }
+
+    #missions-modal h2 {
+      font-size: 2em;
+      font-weight: 700;
+      color: #B58F0A;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    /* Tableau missions */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 16px;
+      table-layout: fixed;
+    }
+
+    thead th {
+      background: #ECA8CF;
+      color: white;
+      font-weight: bold;
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+
+    tbody td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+
+    /* Boutons */
+    .actions button {
+      width: 40px;
+      height: 36px;
+      font-size: 18px;
+      background-color: #E0E0E0;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 2px;
+    }
+
+    .actions button:hover {
+      background-color: #ccc;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Loader */
+    #loader {
+      width: 100%;
+      max-width: 930px;
+      height: 5px;
+      background: #ddd;
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 0 auto 20px auto;
+      display: none;
+    }
+    #loader div {
+      height: 100%;
+      width: 0;
+      background: #ECA8CF;
+      animation: loadAnim 2s linear infinite;
+    }
+    @keyframes loadAnim {
+      0% {width: 0;}
+      50% {width: 80%;}
+      100% {width: 0;}
+    }
+
+    /* === Style spécifique : modale Scan QR & fiche observation === */
+    #modalOverlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    #modalContent {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-sizing: border-box;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+    }
+
+    #qr-reader {
+      width: 100% !important;
+      height: auto !important;
+      aspect-ratio: 1 / 1; /* carré */
+      max-height: 350px;
+      margin: 0 auto;
+    }
+
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 600;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+      border: 1.5px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 12px;
+      background-color: #B58F0A;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+      width: 100%;
+    }
+    button:hover {
+      background-color: #9b7606;
+    }
+
+    #btnCancelQR, #btnCancelForm {
+      background: #d32f2f !important;
+      margin-top: 10px !important;
+    }
+
+    #photosPreview img {
+      max-width: 80px;
+      margin-right: 10px;
+      margin-top: 10px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+    }
+
+    /* === Responsive === */
+    @media (max-width: 600px) {
+      #modalContent {
+        max-width: 95vw;
+        padding: 15px;
+      }
+      #qr-reader {
+        max-height: 250px;
+      }
+      label {
+        font-size: 14px;
+      }
+      input, select, textarea {
+        font-size: 13px;
+      }
+      button {
+        font-size: 15px;
+      }
+      #photosPreview img {
+        max-width: 60px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      table, thead, tbody, th, td, tr {
+        display: block;
+        width: 100%;
+      }
+
+      thead {
+        display: none;
+      }
+
+      tr {
+        margin-bottom: 16px;
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        padding: 10px;
+      }
+
+      td {
+        text-align: left;
+        padding: 8px 12px;
+        position: relative;
+      }
+
+      td::before {
+        content: attr(data-label);
+        font-weight: bold;
+        color: #B58F0A;
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .actions {
+        text-align: center;
+      }
+
+      .actions button {
+        margin: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="background-wrapper"></div>
+  <div id="container">
+    <div id="login">
+      <h2>Viiveo</h2>
+      <form onsubmit="event.preventDefault(); login();">
+        <input type="email" id="email" placeholder="E-mail" required />
+        <input type="password" id="password" placeholder="Mot de passe" required />
+        <button type="submit">Connexion</button>
+        <div id="message"></div>
+      </form>
+    </div>
+    <div id="loader"><div></div></div>
+  </div>
+
+  <div class="viiveo-loader" style="display:none;">Chargement...</div>
+
+  <div class="viiveo-missions" style="display:none;">
+    <h3>Missions à valider</h3>
+    <div id="missions-attente"></div>
+
+    <h3>Missions à venir</h3>
+    <div id="missions-a-venir"></div>
+
+    <h3>Missions terminées</h3>
+    <div id="missions-terminees"></div>
+  </div>
+
+  <!-- Modal pour scan QR et formulaire -->
+  <div id="modalOverlay">
+    <div id="modalContent">
+      <div id="stepQR" style="display:flex; flex-direction:column; align-items:center;">
+        <h2>📸 Scanner le QR code client</h2>
+        <div id="qr-reader"></div>
+        <button id="btnCancelQR" style="background:#d32f2f;">Annuler</button>
+      </div>
+
+      <div id="stepForm" style="display:none;">
+        <h2>📝 Fiche d'observation</h2>
+        <form id="obsForm">
+          <label>Nom du client</label>
+          <input type="text" id="clientName" readonly />
+
+          <label>Date de l'observation</label>
+          <input type="date" id="obsDate" required />
+
+          <label>État de santé</label>
+          <textarea id="etatSante" rows="3" placeholder="Décrire l'état de santé..."></textarea>
+
+          <label>État de forme</label>
+          <select id="etatForme" required>
+            <option value="">-- Choisir --</option>
+            <option>Très bon</option>
+            <option>Bon</option>
+            <option>Moyen</option>
+            <option>Faible</option>
+            <option>Très faible</option>
+          </select>
+
+          <label>Environnement</label>
+          <textarea id="environnement" rows="3" placeholder="Décrire l'environnement..."></textarea>
+
+          <label>Photos (max 3)</label>
+          <input type="file" id="photos" accept="image/*" multiple />
+          <div id="photosPreview"></div>
+
+          <button type="submit">Envoyer la fiche</button>
+          <button type="button" id="btnCancelForm" style="background:#d32f2f;">Annuler</button>
+        </form>
+      </div>
+
+      <div id="stepSuccess" style="display:none; text-align:center;">
+        <h2>✅ Fiche envoyée avec succès !</h2>
+        <button id="btnCloseSuccess">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.webAppUrl = "https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec";
+    window.currentEmail = "";
+    window.currentPrenom = "";
+    window.currentNom = "";
+
+    // Outils de formatage
+    function formatDate(dateString) {
+      const d = new Date(dateString);
+      return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)}`;
+    }
+    
+    function formatTime(timeString) {
+      const d = new Date(timeString);
+      return isNaN(d) ? timeString : `${String(d.getHours()).padStart(2, '0')}h${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+    
+    function estAujourdHui(dateString) {
+      const d = new Date(dateString);
+      const today = new Date();
+      return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+    }
+    
+    function estFuture(dateString) {
+      return new Date(dateString) > new Date();
+    }
+
+    // Affichage/masquage d'éléments
+    function show(el, visible) {
+      if (!el) return;
+      el.style.display = visible ? "block" : "none";
+    }
+
+    // Loader
+    function showLoader(show) {
+      let loader = document.getElementById("loader");
+      if (!loader) {
+        loader = document.createElement("div");
+        loader.id = "loader";
+        loader.innerHTML = "<div></div>";
+        document.getElementById("container")?.appendChild(loader);
+      }
+      loader.style.display = show ? "block" : "none";
+    }
+
+    // Appel JSONP
+    function callApiJsonp(url, callbackName) {
+      return new Promise((resolve, reject) => {
+        window[callbackName] = function (data) {
+          resolve(data);
+          delete window[callbackName];
+          script.remove();
+        };
+        const script = document.createElement("script");
+        script.src = url + (url.includes("?") ? "&" : "?") + "callback=" + callbackName;
+        script.onerror = () => {
+          reject(new Error("Erreur JSONP"));
+          delete window[callbackName];
+          script.remove();
+        };
+        document.body.appendChild(script);
+      });
+    }
+
+    // Login
+    async function login() {
+      const email = document.getElementById("email")?.value.trim();
+      const password = document.getElementById("password")?.value.trim();
+      const message = document.getElementById("message");
+      const loader = document.querySelector(".viiveo-loader");
+      const form = document.getElementById("login");
+      const missionsBlock = document.querySelector(".viiveo-missions");
+
+      if (!email || !password) return message.textContent = "Champs requis.";
+      message.textContent = "";
+      showLoader(true);
+
+      try {
+        const callbackName = "cbLogin" + Date.now();
+        const url = `${webAppUrl}?type=loginPresta&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+        const data = await callApiJsonp(url, callbackName);
+        if (!data.success) return message.textContent = data.message || "Erreur.";
+
+        window.currentEmail = email;
+        window.currentPrenom = data.prenom || "Prestataire";
+        window.currentNom = data.nom || "";
+        
+        form.style.display = "none";
+        show(missionsBlock, true);
+        await loadMissions(email);
+      } catch (err) {
+        console.error(err);
+        message.textContent = "Erreur serveur.";
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    // Affichage missions
+    async function loadMissions(email) {
+      const contAttente = document.getElementById("missions-attente");
+      const contAvenir = document.getElementById("missions-a-venir");
+      const contTerminees = document.getElementById("missions-terminees");
+      if (!contAttente || !contAvenir || !contTerminees) return;
+
+      contAttente.innerHTML = "Chargement...";
+      contAvenir.innerHTML = "Chargement...";
+      contTerminees.innerHTML = "Chargement...";
+
+      try {
+        const callbackName = "cbMissions" + Date.now();
+        const url = `${webAppUrl}?type=missionsPresta&email=${encodeURIComponent(email)}`;
+        const missions = await callApiJsonp(url, callbackName);
+
+        if (!Array.isArray(missions)) {
+          alert("Erreur lors du chargement des missions.");
+          return;
+        }
+
+        const missionsAttente = missions.filter(m => m.statut === "en attente");
+        const missionsValidees = missions.filter(m => m.statut === "confirmée" || m.statut === "validée");
+        const missionsTerminees = missions.filter(m => m.statut === "terminée");
+
+        contAttente.innerHTML = renderTable(missionsAttente, 'attente');
+        contAvenir.innerHTML = renderTable(missionsValidees, 'validee');
+        contTerminees.innerHTML = renderTable(missionsTerminees, '');
+
+        attacherListenersStartPrestation();
+      } catch (e) {
+        alert("Erreur serveur.");
+        console.error(e);
+      }
+    }
+
+    // Génération tableaux missions
+    function renderTable(missions, type = "") {
+      if (!missions.length) return "<p>Aucune mission.</p>";
+      
+      let html = "<table><thead><tr><th>ID</th><th>Client</th><th>Adresse</th><th>Service</th><th>Date</th><th>Heure</th>";
+      if (type) html += "<th>Actions</th>";
+      html += "</tr></thead><tbody>";
+
+      missions.forEach(m => {
+        html += `<tr>
+          <td data-label="ID">${m.id}</td>
+          <td data-label="Client" data-prenom="${m.prenom || ''}">${m.client}</td>
+          <td data-label="Adresse">${m.adresse}</td>
+          <td data-label="Service">${m.service}</td>
+          <td data-label="Date">${formatDate(m.date)}</td>
+          <td data-label="Heure">${formatTime(m.heure)}</td>`;
+          
+        if (type === "attente") {
+          html += `<td data-label="Actions">
+            <div class="actions">
+              <button onclick="validerMission('${m.id}')">✅</button>
+              <button onclick="refuserMission('${m.id}')">❌</button>
+            </div>
+          </td>`;
+        } else if (type === "validee") {
+          html += `<td data-label="Actions">
+            <div class="actions">
+              <button class="btn-start-prestation" data-id="${m.id}">▶️</button>
+            </div>
+          </td>`;
+        }
+        
+        html += "</tr>";
+      });
+
+      html += "</tbody></table>";
+      return html;
+    }
+
+    // Valider/refuser
+    async function validerMission(id) {
+      if (!confirm("Confirmer la validation ?")) return;
+      showLoader(true);
+      try {
+        const callbackName = "cbValider" + Date.now();
+        const url = `${webAppUrl}?type=validerMission&id=${encodeURIComponent(id)}`;
+        const data = await callApiJsonp(url, callbackName);
+        if (data.success) {
+          alert("Mission validée !");
+          await loadMissions(window.currentEmail);
+        } else {
+          alert("Erreur lors de la validation.");
+        }
+      } catch (e) {
+        alert("Erreur serveur lors de la validation.");
+        console.error(e);
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    function refuserMission(id) {
+      const alternatives = prompt("Indiquez une autre date/heure possible :");
+      if (!alternatives) return;
+      showLoader(true);
+      const callbackName = "cbRefuser" + Date.now();
+      const url = `${webAppUrl}?type=refuserMission&id=${encodeURIComponent(id)}&alternatives=${encodeURIComponent(alternatives)}`;
+      callApiJsonp(url, callbackName)
+        .then(() => {
+          alert("Proposition envoyée.");
+          loadMissions(window.currentEmail);
+        })
+        .catch(e => {
+          alert("Erreur lors de l'envoi.");
+          console.error(e);
+        })
+        .finally(() => showLoader(false));
+    }
+
+    // Pour démarrer une prestation
+    function attacherListenersStartPrestation() {
+      document.querySelectorAll(".btn-start-prestation").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const missionId = btn.dataset.id;
+          startPrestation(missionId);
+        });
+      });
+    }
+
+    // Variables pour le scan QR et le formulaire
+    let currentMissionId = null;
+    let currentClientPrenom = "", currentClientNom = "";
+    let currentPrestatairePrenom = "", currentPrestataireNom = "";
+    let currentLatitude = null, currentLongitude = null;
+    let heureDebut = null;
+    let html5QrCode;
+
+    const modalOverlay = document.getElementById("modalOverlay");
+    const stepQR = document.getElementById("stepQR");
+    const stepForm = document.getElementById("stepForm");
+    const stepSuccess = document.getElementById("stepSuccess");
+    const clientNameInput = document.getElementById("clientName");
+    const obsDateInput = document.getElementById("obsDate");
+    const etatSanteInput = document.getElementById("etatSante");
+    const etatFormeInput = document.getElementById("etatForme");
+    const environnementInput = document.getElementById("environnement");
+    const photosInput = document.getElementById("photos");
+    const photosPreview = document.getElementById("photosPreview");
+
+    function setTodayDate() {
+      obsDateInput.value = new Date().toISOString().split("T")[0];
+    }
+
+    function startPrestation(missionId) {
+      const rows = [...document.querySelectorAll("table tbody tr")];
+      const row = rows.find(tr => tr.children[0]?.textContent.trim().toUpperCase() === missionId.toUpperCase());
+
+      if (!row) {
+        alert(`❌ Ligne de mission introuvable pour l'ID ${missionId}`);
+        console.warn("Lignes disponibles :", rows.map(r => r.children[0]?.textContent.trim()));
+        return;
+      }
+
+      const clientNom = row.children[1]?.textContent.trim() || "";
+      const clientPrenom = row.children[1]?.dataset.prenom?.trim() || clientNom.split(" ")[0];
+
+      const prestatairePrenom = window.currentPrenom || "Jean";
+      const prestataireNom = window.currentNom || "Dupont";
+
+      openModalStartPrestation(missionId, clientPrenom, clientNom, prestatairePrenom, prestataireNom);
+    }
+
+    function openModalStartPrestation(missionId, clientPrenom, clientNom, prestatairePrenom, prestataireNom) {
+      currentMissionId = missionId;
+      currentClientPrenom = clientPrenom;
+      currentClientNom = clientNom;
+      currentPrestatairePrenom = prestatairePrenom;
+      currentPrestataireNom = prestataireNom;
+
+      stepQR.style.display = "flex";
+      stepForm.style.display = "none";
+      stepSuccess.style.display = "none";
+      modalOverlay.style.display = "flex";
+
+      startQrScanner();
+    }
+
+    function closeModal() {
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().then(() => {
+          modalOverlay.style.display = "none";
+        });
+      } else {
+        modalOverlay.style.display = "none";
+      }
+      clearForm();
+    }
+
+    function clearForm() {
+      obsDateInput.value = "";
+      etatSanteInput.value = "";
+      etatFormeInput.value = "";
+      environnementInput.value = "";
+      photosInput.value = "";
+      photosPreview.innerHTML = "";
+    }
+
+    async function startQrScanner() {
+      document.getElementById("qr-reader").innerHTML = "";
+      html5QrCode = new Html5Qrcode("qr-reader");
+
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        async (decodedText) => {
+          html5QrCode.stop();
+          try {
+            console.log("🔍 Texte QR scanné :", decodedText);
+
+            const url = new URL(decodedText);
+            // Accepte 'idclient' ou 'clientId'
+            const idClient = url.searchParams.get("idclient") || url.searchParams.get("clientId");
+            if (!idClient) throw new Error("QR invalide : idclient manquant");
+
+            const callbackName = 'cbVerifyClient' + Date.now();
+            const data = await callApiJsonp(
+              `${window.webAppUrl}?type=verifqr&idclient=${encodeURIComponent(idClient)}&email=${encodeURIComponent(window.currentEmail)}`,
+              callbackName
+            );
+
+            if (!data.success) {
+              alert("❌ " + data.message);
+              closeModal();
+              return;
+            }
+
+            // Succès, on peut commencer la prestation
+            heureDebut = new Date().toISOString();
+            getGeolocationAndShowForm();
+
+          } catch (err) {
+            alert("Erreur lors du scan QR.");
+            console.error(err);
+            closeModal();
+          }
+        },
+        () => {}
+      ).catch(err => {
+        alert("Impossible d'activer la caméra.");
+        console.error(err);
+        closeModal();
+      });
+    }
+
+    function getGeolocationAndShowForm() {
+      if (!navigator.geolocation) {
+        alert("❌ Votre appareil ne supporte pas la géolocalisation.");
+        closeModal();
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          currentLatitude = position.coords.latitude;
+          currentLongitude = position.coords.longitude;
+          showForm();
+        },
+        error => {
+          let message = "⚠️ Erreur de géolocalisation.";
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              message = "❌ Vous devez autoriser la géolocalisation pour continuer.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              message = "📍 Position non disponible.";
+              break;
+            case error.TIMEOUT:
+              message = "⏱️ Le délai de localisation est dépassé.";
+              break;
+            default:
+              message = "❌ Erreur inconnue.";
+          }
+          alert(message);
+          closeModal();
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+
+    function showForm() {
+      stepQR.style.display = "none";
+      stepForm.style.display = "block";
+      clientNameInput.value = `${currentClientPrenom} ${currentClientNom}`;
+      setTodayDate();
+    }
+
+    // Gestion des photos
+    photosInput.addEventListener("change", e => {
+      photosPreview.innerHTML = "";
+      const files = e.target.files;
+      if (files.length > 3) {
+        alert("Vous ne pouvez sélectionner que 3 photos max.");
+        photosInput.value = "";
+        return;
+      }
+      [...files].forEach(file => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const img = document.createElement("img");
+          img.src = ev.target.result;
+          photosPreview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    // Soumission du formulaire
+    document.getElementById("obsForm").addEventListener("submit", async e => {
+      e.preventDefault();
+
+      if (photosInput.files.length > 3) {
+        alert("Maximum 3 photos autorisées.");
+        return;
+      }
+
+      const heureFin = new Date().toISOString();
+      const formData = new FormData();
+      formData.append("type", "envoyerFiche");
+      formData.append("missionId", currentMissionId);
+      formData.append("prenomClient", currentClientPrenom);
+      formData.append("nomClient", currentClientNom);
+      formData.append("obsDate", obsDateInput.value);
+      formData.append("etatSante", etatSanteInput.value);
+      formData.append("etatForme", etatFormeInput.value);
+      formData.append("environnement", environnementInput.value);
+      formData.append("latitude", currentLatitude);
+      formData.append("longitude", currentLongitude);
+      formData.append("heureDebut", heureDebut);
+      formData.append("heureFin", heureFin);
+      formData.append("prestatairePrenom", currentPrestatairePrenom);
+      formData.append("prestataireNom", currentPrestataireNom);
+      formData.append("prestataireEmail", window.currentEmail);
+      for (let file of photosInput.files) {
+        formData.append("photos", file);
+      }
+
+      try {
+        const res = await fetch(window.webAppUrl, {
+          method: "POST",
+          body: formData,
+        });
+        const json = await res.json();
+        if (json.success) {
+          stepForm.style.display = "none";
+          stepSuccess.style.display = "block";
+        } else {
+          alert("Erreur : " + (json.message || "Envoi échoué"));
+        }
+      } catch (err) {
+        alert("Erreur réseau.");
+        console.error(err);
+      }
+    });
+
+    // Gestion des boutons de fermeture
+    document.getElementById("btnCancelQR").addEventListener("click", closeModal);
+    document.getElementById("btnCancelForm").addEventListener("click", closeModal);
+    document.getElementById("btnCloseSuccess").addEventListener("click", () => {
+      closeModal();
+      loadMissions(window.currentEmail);
+    });
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96396532b11dba63',t:'MTc1MzI1NTAxNy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
